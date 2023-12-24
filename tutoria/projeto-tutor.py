@@ -1,7 +1,7 @@
 import discord
+from discord.ext import commands
 import openai
 from dotenv import load_dotenv
-from discord.ext import commands
 import os
 
 load_dotenv()
@@ -27,15 +27,17 @@ async def buscar_historico_canal(canal, limit=5):
     return messages_list
 
 def ask_gpt(mensagens):
-    prompt = "\n".join(mensagens)
-    response = openai.Completion.create(
-        engine="text-davinci-003",
-        prompt=prompt,
-        temperature=0.7,
-        max_tokens=300
+    messages = [{"role": "system", "content": "You are a helpful assistant."}]
+    for mensagem in mensagens:
+        role, content = mensagem.split(": ", 1)
+        messages.append({"role": role, "content": content})
+
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo-1106",
+        messages=messages
     )
 
-    resposta = response['choices'][0]['text'].replace("system:", "").strip()
+    resposta = response['choices'][0]['message']['content'].strip()
     return resposta
 
 @bot.event
@@ -54,7 +56,11 @@ async def on_message(message):
                 mensagens = await buscar_historico_canal(message.channel)
                 resposta = ask_gpt(mensagens)
 
-                await message.reply(resposta)
+                # Verificar se a resposta não está vazia
+                if resposta.strip():
+                    await message.reply(resposta)
+                else:
+                    print("A resposta está vazia ou contém apenas espaços em branco.")
 
     except Exception as e:
         print(f"Erro ao processar mensagem: {e}")
